@@ -16,6 +16,7 @@ type Bead struct {
 	Priority        int      `json:"priority"`
 	IssueType       string   `json:"issue_type"`
 	Owner           string   `json:"owner"`
+	Assignee        string   `json:"assignee"`
 	Labels          []string `json:"labels"`
 	DependencyCount int      `json:"dependency_count"`
 	DependentCount  int      `json:"dependent_count"`

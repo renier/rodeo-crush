@@ -29,12 +29,12 @@ func preamble(agent config.Agent, projectDir string) string {
 	return fmt.Sprintf(`You are "%s", an AI agent in the `+config.AppName+` orchestration team.
 You work in the project at: %s
 You track work using the "bd" (beads) CLI issue tracker.
-Your role label is: %s
+Your role is: %s. This is also your assignee name.
 
 IMPORTANT RULES:
 - Work on ONE bead at a time.
 - Always use --json flag when calling bd for programmatic output.
-- Never modify beads that don't belong to your role.`, agent.Name, projectDir, agent.RoleDef.Label)
+- Never modify beads that don't belong to your role.`, agent.Name, projectDir, agent.RoleDef.Assignee)
 }
 
 func workInstructions(role *config.RoleDef) string {

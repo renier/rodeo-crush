@@ -26,18 +26,18 @@ func TestLoadFromFile(t *testing.T) {
 	data := []byte(`roles:
   - name: Dev
     count: 3
-    label: "role:dev"
+    assignee: "developer"
     prompt: "You are a dev."
     filter:
-      label: "role:dev"
+      assignee: "developer"
       ready: true
     worktree: true
   - name: QA
     count: 2
-    label: "role:qa"
+    assignee: "qa"
     prompt: "You are QA."
     filter:
-      label: "role:qa"
+      assignee: "qa"
       status: in_progress
 `)
 	if err := os.WriteFile(path, data, 0644); err != nil {
@@ -74,8 +74,8 @@ func TestLoadEmpty(t *testing.T) {
 
 func TestValidate(t *testing.T) {
 	validRole := RoleDef{
-		Name: "Worker", Count: 1, Label: "role:worker",
-		Prompt: "work", Filter: RoleFilter{Label: "role:worker", Status: "open"},
+		Name: "Worker", Count: 1, Assignee: "worker",
+		Prompt: "work", Filter: RoleFilter{Assignee: "worker", Status: "open"},
 	}
 	tests := []struct {
 		name    string
@@ -84,14 +84,14 @@ func TestValidate(t *testing.T) {
 	}{
 		{"valid", TeamConfig{Roles: []RoleDef{validRole}}, false},
 		{"no roles", TeamConfig{}, true},
-		{"negative count", TeamConfig{Roles: []RoleDef{{Name: "A", Count: -1, Label: "role:a", Prompt: "p", Filter: RoleFilter{Label: "role:a"}}}}, true},
-		{"no name", TeamConfig{Roles: []RoleDef{{Count: 1, Label: "role:a", Prompt: "p", Filter: RoleFilter{Label: "role:a"}}}}, true},
-		{"no label", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Prompt: "p", Filter: RoleFilter{Label: "role:a"}}}}, true},
-		{"no filter label", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Label: "role:a", Prompt: "p"}}}, true},
-		{"no prompt", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Label: "role:a", Filter: RoleFilter{Label: "role:a"}}}}, true},
-		{"prompt_file ok", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Label: "role:a", PromptFile: "a.md", Filter: RoleFilter{Label: "role:a"}}}}, false},
+		{"negative count", TeamConfig{Roles: []RoleDef{{Name: "A", Count: -1, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "a"}}}}, true},
+		{"no name", TeamConfig{Roles: []RoleDef{{Count: 1, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "a"}}}}, true},
+		{"no assignee", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Prompt: "p", Filter: RoleFilter{Assignee: "a"}}}}, true},
+		{"no filter assignee", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", Prompt: "p"}}}, true},
+		{"no prompt", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", Filter: RoleFilter{Assignee: "a"}}}}, true},
+		{"prompt_file ok", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", PromptFile: "a.md", Filter: RoleFilter{Assignee: "a"}}}}, false},
 		{"duplicate names", TeamConfig{Roles: []RoleDef{validRole, validRole}}, true},
-		{"all zero counts", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 0, Label: "role:a", Prompt: "p", Filter: RoleFilter{Label: "role:a"}}}}, true},
+		{"all zero counts", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 0, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "a"}}}}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -106,9 +106,9 @@ func TestValidate(t *testing.T) {
 func TestAgents(t *testing.T) {
 	cfg := &TeamConfig{
 		Roles: []RoleDef{
-			{Name: "PM", Count: 1, Label: "role:pm", Prompt: "p", Filter: RoleFilter{Label: "role:pm"}},
-			{Name: "Dev", Count: 2, Label: "role:dev", Prompt: "p", Filter: RoleFilter{Label: "role:dev"}},
-			{Name: "QA", Count: 1, Label: "role:qa", Prompt: "p", Filter: RoleFilter{Label: "role:qa"}},
+			{Name: "PM", Count: 1, Assignee: "pm", Prompt: "p", Filter: RoleFilter{Assignee: "pm"}},
+			{Name: "Dev", Count: 2, Assignee: "developer", Prompt: "p", Filter: RoleFilter{Assignee: "developer"}},
+			{Name: "QA", Count: 1, Assignee: "qa", Prompt: "p", Filter: RoleFilter{Assignee: "qa"}},
 		},
 	}
 
@@ -139,18 +139,18 @@ func TestFilterCommand(t *testing.T) {
 	}{
 		{
 			"status filter",
-			RoleDef{Filter: RoleFilter{Label: "role:pm", Status: "open"}},
-			"bd list --label role:pm --status open --json",
+			RoleDef{Filter: RoleFilter{Assignee: "pm", Status: "open"}},
+			"bd list --assignee pm --status open --json",
 		},
 		{
 			"ready filter",
-			RoleDef{Filter: RoleFilter{Label: "role:dev", Ready: true}},
-			"bd list --label role:dev --ready --json",
+			RoleDef{Filter: RoleFilter{Assignee: "developer", Ready: true}},
+			"bd list --assignee developer --ready --json",
 		},
 		{
 			"ready takes precedence over status",
-			RoleDef{Filter: RoleFilter{Label: "role:dev", Ready: true, Status: "open"}},
-			"bd list --label role:dev --ready --json",
+			RoleDef{Filter: RoleFilter{Assignee: "developer", Ready: true, Status: "open"}},
+			"bd list --assignee developer --ready --json",
 		},
 	}
 	for _, tt := range tests {
@@ -172,8 +172,8 @@ func TestResolvePrompts(t *testing.T) {
 
 	cfg := &TeamConfig{
 		Roles: []RoleDef{
-			{Name: "Inline", Count: 1, Label: "role:a", Prompt: "already set", Filter: RoleFilter{Label: "role:a"}},
-			{Name: "FromFile", Count: 1, Label: "role:b", PromptFile: "my_role.md", Filter: RoleFilter{Label: "role:b"}},
+			{Name: "Inline", Count: 1, Assignee: "a", Prompt: "already set", Filter: RoleFilter{Assignee: "a"}},
+			{Name: "FromFile", Count: 1, Assignee: "b", PromptFile: "my_role.md", Filter: RoleFilter{Assignee: "b"}},
 		},
 	}
 
@@ -198,7 +198,7 @@ func TestResolvePromptsAbsolutePath(t *testing.T) {
 
 	cfg := &TeamConfig{
 		Roles: []RoleDef{
-			{Name: "Abs", Count: 1, Label: "role:a", PromptFile: promptFile, Filter: RoleFilter{Label: "role:a"}},
+			{Name: "Abs", Count: 1, Assignee: "a", PromptFile: promptFile, Filter: RoleFilter{Assignee: "a"}},
 		},
 	}
 
@@ -257,7 +257,7 @@ func TestBootstrapIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	customContent := "# my custom config\nroles:\n  - name: X\n    count: 1\n    label: \"role:x\"\n    prompt: \"x\"\n    filter:\n      label: \"role:x\"\n      status: open\n"
+	customContent := "# my custom config\nroles:\n  - name: X\n    count: 1\n    assignee: \"x\"\n    prompt: \"x\"\n    filter:\n      assignee: \"x\"\n      status: open\n"
 	teamPath := filepath.Join(cfgDir, "team.yaml")
 	if err := os.WriteFile(teamPath, []byte(customContent), 0644); err != nil {
 		t.Fatal(err)
@@ -276,11 +276,11 @@ func TestBootstrapIdempotent(t *testing.T) {
 
 func TestSocketPath(t *testing.T) {
 	agent := Agent{
-		RoleDef: &RoleDef{Label: "role:developer"},
+		RoleDef: &RoleDef{Assignee: "developer"},
 		Index:   2,
 	}
 	got := agent.SocketPath("/tmp/sockets")
-	expected := "/tmp/sockets/crush-role-developer-2.sock"
+	expected := "/tmp/sockets/crush-developer-2.sock"
 	if got != expected {
 		t.Errorf("got %q, want %q", got, expected)
 	}

@@ -128,7 +128,7 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 	windows := make([]tmux.WindowSpec, len(agents))
 	for i, agent := range agents {
 		socketPath := agent.SocketPath(o.SocketDir)
-		isArchitect := agent.RoleDef.SendPromptOnce && agent.RoleDef.Label == "role:architect"
+		isArchitect := agent.RoleDef.SendPromptOnce && agent.RoleDef.Assignee == "architect"
 
 		var prompt string
 		if isArchitect && !hasSeed {

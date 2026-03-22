@@ -6,35 +6,35 @@
 roles:
   - name: Architect
     count: 1
-    label: "role:architect"
+    assignee: "architect"
     prompt_file: prompts/architect.md
     send_prompt_once: true
     filter:
-      label: "role:architect"
+      assignee: "architect"
       status: open
 
   - name: Developer
     count: 2
-    label: "role:developer"
+    assignee: "developer"
     prompt_file: prompts/developer.md
     filter:
-      label: "role:developer"
+      assignee: "developer"
       ready: true
     worktree: true
 
   - name: Reviewer
     count: 1
-    label: "role:reviewer"
+    assignee: "reviewer"
     prompt_file: prompts/reviewer.md
     filter:
-      label: "role:reviewer"
+      assignee: "reviewer"
       status: in_progress
 
   - name: Tester
     count: 1
-    label: "role:tester"
+    assignee: "tester"
     prompt_file: prompts/tester.md
     filter:
-      label: "role:tester"
+      assignee: "tester"
       status: in_progress
     worktree: true

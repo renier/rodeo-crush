@@ -51,7 +51,7 @@ func defaultTeamYAML() string {
 		panic(fmt.Sprintf("marshaling default config: %v", err))
 	}
 	return "# " + AppName + " Team Configuration\n" +
-		"# Edit this file to customize roles, counts, labels, and prompts.\n" +
+		"# Edit this file to customize roles, counts, assignees, and prompts.\n" +
 		"# Prompt text can be inline (prompt:) or loaded from a file (prompt_file:).\n" +
 		"# Paths in prompt_file are relative to this directory (~/.config/" + ConfigDirName + "/).\n" +
 		"#\n" +
@@ -92,47 +92,44 @@ produce implementation tasks for the development team.
      - Relevant sections from DESIGN.md
      - Acceptance criteria
      - File paths and function signatures where relevant
-   - Be labeled "role:developer" so developers pick it up.
+   - Be assigned to "developer" so developers pick it up.
 5. Define dependencies between beads if one must be completed before another.
 
 ### Creating beads:
 ` + "```bash" + `
-bd create "Task title" --description="Detailed task description with acceptance criteria" -t task -p <priority> --json
-bd label add <new-bead-id> role:developer
+bd create "Task title" --description="Detailed task description with acceptance criteria" -t task -p <priority> -a developer --json
 ` + "```" + `
 `
 
 const defaultDeveloperPrompt = `## Your Role: Developer
 
-You implement code for beads labeled "role:developer" that are in "ready" status (open with no unresolved dependencies).
+You implement code for beads assigned to "developer" that are in "ready" status (open with no unresolved dependencies).
 
 NEVER close a bead.
 
 ### When you pick up a bead:
-1. Claim it: ` + "`bd update <id> --claim --json`" + `
-2. Set it to in_progress: ` + "`bd update <id> --status in_progress --json`" + `
-3. Read the bead description for requirements, design, and acceptance criteria.
-4. Create a git worktree for your work (see worktree instructions below).
-5. Implement the code, following the design and acceptance criteria.
-6. Update the bead description with what you did and any notes.
-7. When done:
+1. Claim it: ` + "`bd update <id> -a developer --status in_progress --json`" + `
+2. Read the bead description for requirements, design, and acceptance criteria.
+3. Create a git worktree for your work (see worktree instructions below).
+4. Implement the code, following the design and acceptance criteria.
+5. Update the bead description with what you did and any notes.
+6. When done:
    - Rebase your branch, merge back, remove the worktree.
-   - Remove "role:developer" label, add "role:reviewer" label.
-8. If blocked:
+   - Reassign to reviewer: ` + "`bd update <id> -a reviewer --json`" + `
+7. If blocked:
    - Set status to "blocked".
    - Update description with what's blocking and next steps.
 
 ### Managing beads:
 ` + "```bash" + `
-bd update <id> --status in_progress --json
-bd label remove <id> role:developer
-bd label add <id> role:reviewer
+bd update <id> -a developer --status in_progress --json
+bd update <id> -a reviewer --json
 ` + "```" + `
 `
 
 const defaultReviewerPrompt = `## Your Role: Reviewer
 
-You review work on beads labeled "role:reviewer" that are in "in_progress" status.
+You review work on beads assigned to "reviewer" that are in "in_progress" status.
 
 NEVER close a bead.
 
@@ -145,28 +142,24 @@ NEVER close a bead.
 3. You do NOT fix issues. You only read code and update the bead.
 4. If issues found:
    - Update bead description with detailed findings.
-   - Remove "role:reviewer" label, add "role:developer" label.
-   - Set status back to "open".
+   - Reassign to developer and set status back to open.
 5. If review passes:
-   - Remove "role:reviewer" label, add "role:tester" label.
+   - Reassign to tester.
    - Update bead description noting the review passed.
 
 ### Managing beads:
 ` + "```bash" + `
 # Issues found - send back to developer:
-bd label remove <id> role:reviewer
-bd label add <id> role:developer
-bd update <id> --status open --json
+bd update <id> -a developer --status open --json
 
 # Review passed - send to tester:
-bd label remove <id> role:reviewer
-bd label add <id> role:tester
+bd update <id> -a tester --json
 ` + "```" + `
 `
 
 const defaultTesterPrompt = `## Your Role: Tester
 
-You test work on beads labeled "role:tester" that are in "in_progress" status.
+You test work on beads assigned to "tester" that are in "in_progress" status.
 
 ### When you pick up a bead:
 1. Read the bead description for the design and acceptance criteria.
@@ -176,23 +169,18 @@ You test work on beads labeled "role:tester" that are in "in_progress" status.
 5. You may fix issues ONLY in test code. Do not fix application code.
 6. If issues are found in application code:
    - Update bead description with findings and assessment.
-   - Remove "role:tester" label, add "role:developer" label.
-   - Set status back to "open".
+   - Reassign to developer and set status back to open.
    - Rebase, merge your test code back, remove worktree.
 7. If all tests pass:
    - Rebase, merge your test code back, remove worktree.
    - Close the bead.
-   - Remove the "role:tester" label.
 
 ### Managing beads:
 ` + "```bash" + `
 # Tests fail - send back to developer:
-bd label remove <id> role:tester
-bd label add <id> role:developer
-bd update <id> --status open --json
+bd update <id> -a developer --status open --json
 
 # Tests pass - complete:
-bd label remove <id> role:tester
 bd close <id> --reason "All tests pass" --json
 ` + "```" + `
 `

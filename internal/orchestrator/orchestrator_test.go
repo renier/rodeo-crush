@@ -66,9 +66,9 @@ func testTeamConfig() *config.TeamConfig {
 	return &config.TeamConfig{
 		Roles: []config.RoleDef{
 			{
-				Name: "Developer", Count: 1, Label: "role:developer",
+				Name: "Developer", Count: 1, Assignee: "developer",
 				Prompt: "You are a dev.",
-				Filter: config.RoleFilter{Label: "role:developer", Ready: true},
+				Filter: config.RoleFilter{Assignee: "developer", Ready: true},
 			},
 		},
 	}
@@ -333,9 +333,9 @@ func testSendOnceConfig() *config.TeamConfig {
 	return &config.TeamConfig{
 		Roles: []config.RoleDef{
 			{
-				Name: "Architect", Count: 1, Label: "role:architect",
+				Name: "Architect", Count: 1, Assignee: "architect",
 				Prompt:         "You are the architect.",
-				Filter:         config.RoleFilter{Label: "role:architect", Status: "open"},
+				Filter:         config.RoleFilter{Assignee: "architect", Status: "open"},
 				SendPromptOnce: true,
 			},
 		},

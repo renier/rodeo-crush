@@ -155,9 +155,9 @@ func makeColumns(width int) []table.Column {
 	typeW := 8
 	priW := 3
 	statusW := 14
-	labelsW := 22
+	roleW := 12
 	descW := 30
-	fixed := idW + typeW + priW + statusW + labelsW + descW
+	fixed := idW + typeW + priW + statusW + roleW + descW
 	titleW := usable - fixed
 	if titleW < 10 {
 		titleW = 10
@@ -168,7 +168,7 @@ func makeColumns(width int) []table.Column {
 		{Title: "Type", Width: typeW},
 		{Title: "Pri", Width: priW},
 		{Title: "Status", Width: statusW},
-		{Title: "Labels", Width: labelsW},
+		{Title: "Role", Width: roleW},
 		{Title: "Title", Width: titleW},
 		{Title: "Description", Width: descW},
 	}
@@ -185,7 +185,7 @@ func beadsToRows(beads []Bead, columns []table.Column) []table.Row {
 			b.IssueType,
 			priorityLabel(b.Priority),
 			statusIcon(b.Status),
-			strings.Join(b.Labels, ", "),
+			b.Assignee,
 			b.Title,
 			desc,
 		}

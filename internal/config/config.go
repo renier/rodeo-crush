@@ -43,7 +43,7 @@ type TeamConfig struct {
 type RoleDef struct {
 	Name           string     `yaml:"name"`
 	Count          int        `yaml:"count"`
-	Label          string     `yaml:"label"`
+	Assignee       string     `yaml:"assignee"`
 	Prompt         string     `yaml:"prompt,omitempty"`
 	PromptFile     string     `yaml:"prompt_file,omitempty"`
 	Filter         RoleFilter `yaml:"filter"`
@@ -52,17 +52,17 @@ type RoleDef struct {
 }
 
 type RoleFilter struct {
-	Label  string `yaml:"label"`
-	Status string `yaml:"status,omitempty"`
-	Ready  bool   `yaml:"ready,omitempty"`
+	Assignee string `yaml:"assignee"`
+	Status   string `yaml:"status,omitempty"`
+	Ready    bool   `yaml:"ready,omitempty"`
 }
 
 // FilterCommand returns the bd list command for this role's filter.
 func (r *RoleDef) FilterCommand() string {
 	var parts []string
 	parts = append(parts, "bd list")
-	if r.Filter.Label != "" {
-		parts = append(parts, "--label", r.Filter.Label)
+	if r.Filter.Assignee != "" {
+		parts = append(parts, "--assignee", r.Filter.Assignee)
 	}
 	if r.Filter.Ready {
 		parts = append(parts, "--ready")
@@ -111,11 +111,11 @@ func (c *TeamConfig) Validate() error {
 		if r.Count < 0 {
 			return fmt.Errorf("role %q: count cannot be negative", r.Name)
 		}
-		if r.Label == "" {
-			return fmt.Errorf("role %q: label cannot be empty", r.Name)
+		if r.Assignee == "" {
+			return fmt.Errorf("role %q: assignee cannot be empty", r.Name)
 		}
-		if r.Filter.Label == "" {
-			return fmt.Errorf("role %q: filter.label cannot be empty", r.Name)
+		if r.Filter.Assignee == "" {
+			return fmt.Errorf("role %q: filter.assignee cannot be empty", r.Name)
 		}
 		if r.Prompt == "" && r.PromptFile == "" {
 			return fmt.Errorf("role %q: must have either prompt or prompt_file", r.Name)
@@ -181,8 +181,7 @@ type Agent struct {
 
 // SocketPath returns the unix socket path for this agent.
 func (a Agent) SocketPath(base string) string {
-	safe := strings.ReplaceAll(a.RoleDef.Label, ":", "-")
-	return fmt.Sprintf("%s/crush-%s-%d.sock", base, safe, a.Index)
+	return fmt.Sprintf("%s/crush-%s-%d.sock", base, a.RoleDef.Assignee, a.Index)
 }
 
 // PaneName returns the tmux pane title for this agent.

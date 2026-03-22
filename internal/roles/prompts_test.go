@@ -7,16 +7,16 @@ import (
 	"github.com/renier/rodeo-crush/internal/config"
 )
 
-func makeAgent(name, label, prompt string, worktree bool) config.Agent {
+func makeAgent(name, assignee, prompt string, worktree bool) config.Agent {
 	role := &config.RoleDef{
 		Name:     name,
 		Count:    1,
-		Label:    label,
+		Assignee: assignee,
 		Prompt:   prompt,
 		Worktree: worktree,
 		Filter: config.RoleFilter{
-			Label:  label,
-			Status: "open",
+			Assignee: assignee,
+			Status:   "open",
 		},
 	}
 	return config.Agent{
@@ -32,16 +32,16 @@ func TestPromptContainsRole(t *testing.T) {
 		contains []string
 	}{
 		{
-			makeAgent("Architect", "role:architect", "You are the architect", false),
-			[]string{"Architect", "role:architect", "Finding Work", "You are the architect"},
+			makeAgent("Architect", "architect", "You are the architect", false),
+			[]string{"Architect", "architect", "Finding Work", "You are the architect"},
 		},
 		{
-			makeAgent("Developer", "role:developer", "You are a dev", true),
-			[]string{"Developer", "role:developer", "worktree", "Finding Work", "You are a dev"},
+			makeAgent("Developer", "developer", "You are a dev", true),
+			[]string{"Developer", "developer", "worktree", "Finding Work", "You are a dev"},
 		},
 		{
-			makeAgent("Reviewer", "role:reviewer", "You review code", false),
-			[]string{"Reviewer", "role:reviewer", "You review code"},
+			makeAgent("Reviewer", "reviewer", "You review code", false),
+			[]string{"Reviewer", "reviewer", "You review code"},
 		},
 	}
 
@@ -58,7 +58,7 @@ func TestPromptContainsRole(t *testing.T) {
 }
 
 func TestPromptNoWorktreeWhenDisabled(t *testing.T) {
-	agent := makeAgent("Reviewer", "role:reviewer", "review stuff", false)
+	agent := makeAgent("Reviewer", "reviewer", "review stuff", false)
 	prompt := Prompt(agent, "/tmp/project")
 	if strings.Contains(prompt, "Git Worktree Instructions") {
 		t.Error("worktree=false role should not have worktree instructions")
@@ -66,7 +66,7 @@ func TestPromptNoWorktreeWhenDisabled(t *testing.T) {
 }
 
 func TestPromptHasWorktreeWhenEnabled(t *testing.T) {
-	agent := makeAgent("Developer", "role:developer", "dev stuff", true)
+	agent := makeAgent("Developer", "developer", "dev stuff", true)
 	prompt := Prompt(agent, "/tmp/project")
 	if !strings.Contains(prompt, "Git Worktree Instructions") {
 		t.Error("worktree=true role should have worktree instructions")
@@ -75,29 +75,29 @@ func TestPromptHasWorktreeWhenEnabled(t *testing.T) {
 
 func TestWorkLoopUsesFilterCommand(t *testing.T) {
 	role := &config.RoleDef{
-		Name:   "Custom",
-		Label:  "role:custom",
-		Prompt: "custom",
+		Name:     "Custom",
+		Assignee: "custom",
+		Prompt:   "custom",
 		Filter: config.RoleFilter{
-			Label: "role:custom",
-			Ready: true,
+			Assignee: "custom",
+			Ready:    true,
 		},
 	}
 	agent := config.Agent{RoleDef: role, Name: "Custom", Index: 1}
 	prompt := Prompt(agent, "/tmp/project")
-	if !strings.Contains(prompt, "bd list --label role:custom --ready --json") {
+	if !strings.Contains(prompt, "bd list --assignee custom --ready --json") {
 		t.Error("prompt should contain the filter command from RoleDef")
 	}
 }
 
 func TestCustomRolePrompt(t *testing.T) {
 	role := &config.RoleDef{
-		Name:   "Security Auditor",
-		Label:  "role:security",
-		Prompt: "You audit code for vulnerabilities.\nFocus on injection and auth issues.",
+		Name:     "Security Auditor",
+		Assignee: "security",
+		Prompt:   "You audit code for vulnerabilities.\nFocus on injection and auth issues.",
 		Filter: config.RoleFilter{
-			Label:  "role:security",
-			Status: "in_progress",
+			Assignee: "security",
+			Status:   "in_progress",
 		},
 	}
 	agent := config.Agent{RoleDef: role, Name: "Security Auditor", Index: 1}
@@ -105,7 +105,7 @@ func TestCustomRolePrompt(t *testing.T) {
 	if !strings.Contains(prompt, "You audit code for vulnerabilities") {
 		t.Error("custom prompt content missing")
 	}
-	if !strings.Contains(prompt, "role:security") {
-		t.Error("custom label missing from preamble")
+	if !strings.Contains(prompt, "security") {
+		t.Error("custom assignee missing from preamble")
 	}
 }

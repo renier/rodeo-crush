@@ -4,12 +4,12 @@ func DefaultArchitect() RoleDef {
 	return RoleDef{
 		Name:           "Architect",
 		Count:          1,
-		Label:          "role:architect",
+		Assignee:       "architect",
 		PromptFile:     "prompts/architect.md",
 		SendPromptOnce: true,
 		Filter: RoleFilter{
-			Label:  "role:architect",
-			Status: "open",
+			Assignee: "architect",
+			Status:   "open",
 		},
 	}
 }
@@ -18,11 +18,11 @@ func DefaultDeveloper() RoleDef {
 	return RoleDef{
 		Name:       "Developer",
 		Count:      2,
-		Label:      "role:developer",
+		Assignee:   "developer",
 		PromptFile: "prompts/developer.md",
 		Filter: RoleFilter{
-			Label: "role:developer",
-			Ready: true,
+			Assignee: "developer",
+			Ready:    true,
 		},
 		Worktree: true,
 	}
@@ -32,11 +32,11 @@ func DefaultReviewer() RoleDef {
 	return RoleDef{
 		Name:       "Reviewer",
 		Count:      1,
-		Label:      "role:reviewer",
+		Assignee:   "reviewer",
 		PromptFile: "prompts/reviewer.md",
 		Filter: RoleFilter{
-			Label:  "role:reviewer",
-			Status: "in_progress",
+			Assignee: "reviewer",
+			Status:   "in_progress",
 		},
 	}
 }
@@ -45,11 +45,11 @@ func DefaultTester() RoleDef {
 	return RoleDef{
 		Name:       "Tester",
 		Count:      1,
-		Label:      "role:tester",
+		Assignee:   "tester",
 		PromptFile: "prompts/tester.md",
 		Filter: RoleFilter{
-			Label:  "role:tester",
-			Status: "in_progress",
+			Assignee: "tester",
+			Status:   "in_progress",
 		},
 		Worktree: true,
 	}
