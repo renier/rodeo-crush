@@ -15,7 +15,7 @@ Rodeo Crush spins up a tmux session with multiple Crush TUI instances, each assi
 | **Reviewer** | Reviews code for correctness and design adherence |
 | **Tester** | Writes and runs tests, closes beads that pass |
 
-Work flows through the pipeline via beads labels (`role:developer` -> `role:reviewer` -> `role:tester`). The Architect kicks things off by reading `SEED.md` and creating `role:developer` beads. Each subsequent agent continuously polls for beads matching its role and processes them.
+Work flows through the pipeline via beads assignees (`developer` -> `reviewer` -> `tester`). The Architect kicks things off by reading `SEED.md` and creating beads assigned to `developer`. Each subsequent agent continuously polls for beads matching its assignee name and processes them.
 
 If no `SEED.md` is present in the project directory, the Architect starts idle with a "stand by for instructions" prompt — you can send it work manually via the Crush TUI.
 
@@ -109,34 +109,34 @@ Edit these files to customize the system. Existing files are never overwritten.
 
 ### Team Configuration
 
-The `team.yaml` defines your team as a list of roles. Each role specifies its name, how many agents to run, its beads label, how to find work, and the system prompt to use:
+The `team.yaml` defines your team as a list of roles. Each role specifies its name, how many agents to run, its assignee name, how to find work, and the system prompt to use:
 
 ```yaml
 roles:
   - name: Architect
     count: 1
-    label: "role:architect"
+    assignee: "architect"
     prompt_file: prompts/architect.md
     send_prompt_once: true
     filter:
-      label: "role:architect"
+      assignee: "architect"
       status: open
 
   - name: Developer
     count: 2
-    label: "role:developer"
+    assignee: "developer"
     prompt_file: prompts/developer.md
     filter:
-      label: "role:developer"
+      assignee: "developer"
       ready: true           # only pick up beads with resolved deps
     worktree: true           # use git worktrees for isolation
 
   - name: Reviewer
     count: 1
-    label: "role:reviewer"
+    assignee: "reviewer"
     prompt_file: prompts/reviewer.md
     filter:
-      label: "role:reviewer"
+      assignee: "reviewer"
       status: in_progress
 ```
 
@@ -146,10 +146,10 @@ roles:
 |---|---|---|
 | `name` | yes | Display name (used for tmux window titles) |
 | `count` | yes | Number of parallel agents for this role |
-| `label` | yes | Beads label this role owns (e.g. `role:developer`) |
+| `assignee` | yes | Beads assignee name for this role (e.g. `developer`) |
 | `prompt` | * | Inline system prompt text |
 | `prompt_file` | * | Path to a prompt markdown file (relative to config dir) |
-| `filter.label` | yes | Beads label to query for work |
+| `filter.assignee` | yes | Beads assignee name to query for work |
 | `filter.status` | no | Status filter (`open`, `in_progress`, `blocked`) |
 | `filter.ready` | no | If `true`, only pick up beads with all deps resolved |
 | `worktree` | no | If `true`, agent gets git worktree instructions |
@@ -166,10 +166,10 @@ You can edit the default prompts or write entirely new ones. Example custom role
 ```yaml
   - name: Security Auditor
     count: 1
-    label: "role:security"
+    assignee: "security"
     prompt_file: prompts/security_auditor.md
     filter:
-      label: "role:security"
+      assignee: "security"
       status: in_progress
 ```
 
@@ -178,7 +178,7 @@ With `prompts/security_auditor.md`:
 ```markdown
 ## Your Role: Security Auditor
 
-You audit code for security vulnerabilities on beads labeled "role:security".
+You audit code for security vulnerabilities on beads assigned to "security".
 
 ### When you pick up a bead:
 1. Read the bead description for context on what was implemented.
@@ -188,7 +188,7 @@ You audit code for security vulnerabilities on beads labeled "role:security".
    - Secrets in code or config.
    - Insecure dependencies.
 3. Update the bead description with findings.
-4. If issues found: remove "role:security", add "role:developer", set status "open".
+4. If issues found: reassign to developer and set status open.
 5. If clean: close the bead with reason "Security audit passed".
 ```
 
@@ -199,12 +199,12 @@ For quick experiments you can inline the prompt directly in `team.yaml`:
 ```yaml
   - name: Linter
     count: 1
-    label: "role:linter"
+    assignee: "linter"
     prompt: |
       You run linting and formatting checks.
       Fix any issues you find, then close the bead.
     filter:
-      label: "role:linter"
+      assignee: "linter"
       status: open
 ```
 
@@ -238,7 +238,7 @@ Each agent gets its own tmux window running `crush --listen <socket>`, which sta
 
 1. Write a `SEED.md` in your project root describing what you want built
 2. Run `rodeo` to start the orchestrator
-3. Run `rodeo beads` in another terminal to monitor progress
+3. The beads dashboard runs automatically in the first tmux window
 4. Watch the agents collaborate in tmux (`tmux attach -t rodeo`), tab between windows with `Ctrl-b n` / `Ctrl-b p`
 5. The Architect reads SEED.md, creates DESIGN.md and implementation beads
 6. Beads flow through the pipeline automatically until tests pass and work is closed
