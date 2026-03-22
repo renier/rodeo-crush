@@ -11,6 +11,7 @@ import (
 type Bead struct {
 	ID              string   `json:"id"`
 	Title           string   `json:"title"`
+	Description     string   `json:"description"`
 	Status          string   `json:"status"`
 	Priority        int      `json:"priority"`
 	IssueType       string   `json:"issue_type"`

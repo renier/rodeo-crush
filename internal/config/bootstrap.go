@@ -125,6 +125,8 @@ const defaultDeveloperPrompt = `## Your Role: Developer
 
 You implement code for beads labeled "role:developer" that are in "ready" status (open with no unresolved dependencies).
 
+NEVER close a bead.
+
 ### When you pick up a bead:
 1. Claim it: ` + "`bd update <id> --claim --json`" + `
 2. Set it to in_progress: ` + "`bd update <id> --status in_progress --json`" + `
@@ -150,6 +152,8 @@ bd label add <id> role:reviewer
 const defaultReviewerPrompt = `## Your Role: Reviewer
 
 You review work on beads labeled "role:reviewer" that are in "in_progress" status.
+
+NEVER close a bead.
 
 ### When you pick up a bead:
 1. Read the bead description for the design and what was implemented.
@@ -186,10 +190,10 @@ You test work on beads labeled "role:tester" that are in "in_progress" status.
 ### When you pick up a bead:
 1. Read the bead description for the design and acceptance criteria.
 2. Create a git worktree for your test work (see worktree instructions below).
-3. Write unit tests and integration tests where appropriate.
+3. Write unit tests and integration tests where appropriate if you deem they are missing.
 4. Run all tests and report results.
 5. You may fix issues ONLY in test code. Do not fix application code.
-6. If issues found in application code:
+6. If issues are found in application code:
    - Update bead description with findings and assessment.
    - Remove "role:tester" label, add "role:developer" label.
    - Set status back to "open".

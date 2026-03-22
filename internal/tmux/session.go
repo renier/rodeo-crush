@@ -90,6 +90,34 @@ func (s *Session) Create(windows []WindowSpec) error {
 	return nil
 }
 
+// AddWindow adds a single window to an existing session.
+func (s *Session) AddWindow(w WindowSpec) error {
+	args := []string{
+		"new-window",
+		"-t", s.Name,
+		"-n", w.Name,
+	}
+	if w.Dir != "" {
+		args = append(args, "-c", w.Dir)
+	}
+	if w.Command != "" {
+		args = append(args, w.Command)
+	}
+	if _, err := s.Runner.Run(args...); err != nil {
+		return fmt.Errorf("adding window %s: %w", w.Name, err)
+	}
+	return nil
+}
+
+// SelectWindow focuses a window by index.
+func (s *Session) SelectWindow(index int) error {
+	target := fmt.Sprintf("%s:%d", s.Name, index)
+	if _, err := s.Runner.Run("select-window", "-t", target); err != nil {
+		return fmt.Errorf("selecting window %d: %w", index, err)
+	}
+	return nil
+}
+
 // RespawnWindow kills the running process in a window and starts a new
 // command in its place. This is equivalent to `tmux respawn-window -k`.
 func (s *Session) RespawnWindow(windowIndex int, command string, dir string) error {

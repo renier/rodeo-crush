@@ -12,9 +12,53 @@ import (
 
 const refreshInterval = 5 * time.Second
 
-var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240"))
+var (
+	subtle = lipgloss.AdaptiveColor{Light: "245", Dark: "241"}
+	accent = lipgloss.AdaptiveColor{Light: "99", Dark: "105"}
+	bright = lipgloss.AdaptiveColor{Light: "235", Dark: "252"}
+	warn   = lipgloss.AdaptiveColor{Light: "196", Dark: "203"}
+	muted  = lipgloss.AdaptiveColor{Light: "250", Dark: "238"}
+
+	titleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(accent).
+			PaddingLeft(1)
+
+	sessionStyle = lipgloss.NewStyle().
+			Foreground(bright).
+			Bold(true)
+
+	countStyle = lipgloss.NewStyle().
+			Foreground(subtle)
+
+	timestampStyle = lipgloss.NewStyle().
+			Foreground(subtle).
+			Italic(true)
+
+	errorStyle = lipgloss.NewStyle().
+			Foreground(warn).
+			Bold(true).
+			PaddingLeft(1)
+
+	emptyStyle = lipgloss.NewStyle().
+			Foreground(subtle).
+			Italic(true).
+			PaddingLeft(2).
+			PaddingTop(1)
+
+	helpStyle = lipgloss.NewStyle().
+			Foreground(subtle).
+			PaddingLeft(1)
+
+	tableStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.RoundedBorder()).
+			BorderForeground(subtle)
+
+	statusOpen       = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "34", Dark: "78"})
+	statusInProgress = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "33", Dark: "75"})
+	statusBlocked    = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "196", Dark: "203"})
+	statusClosed     = lipgloss.NewStyle().Foreground(subtle)
+)
 
 type tickMsg time.Time
 
@@ -34,6 +78,48 @@ type model struct {
 	quitting    bool
 }
 
+func statusIcon(s string) string {
+	switch s {
+	case "open":
+		return statusOpen.Render("○ open")
+	case "in_progress":
+		return statusInProgress.Render("◐ in_progress")
+	case "blocked":
+		return statusBlocked.Render("● blocked")
+	case "closed":
+		return statusClosed.Render("✓ closed")
+	default:
+		return s
+	}
+}
+
+func priorityLabel(p int) string {
+	switch p {
+	case 0:
+		return lipgloss.NewStyle().Foreground(warn).Bold(true).Render("P0")
+	case 1:
+		return lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "208", Dark: "214"}).Render("P1")
+	case 2:
+		return lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "33", Dark: "75"}).Render("P2")
+	case 3:
+		return lipgloss.NewStyle().Foreground(subtle).Render("P3")
+	case 4:
+		return lipgloss.NewStyle().Foreground(muted).Render("P4")
+	default:
+		return fmt.Sprintf("P%d", p)
+	}
+}
+
+func truncate(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	if max <= 3 {
+		return s[:max]
+	}
+	return s[:max-3] + "..."
+}
+
 func newModel(session string) model {
 	columns := makeColumns(80)
 	t := table.New(
@@ -46,13 +132,16 @@ func newModel(session string) model {
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		BorderForeground(accent).
 		BorderBottom(true).
-		Bold(true)
+		Bold(true).
+		Foreground(bright)
 	s.Selected = s.Selected.
 		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
+		Background(lipgloss.AdaptiveColor{Light: "99", Dark: "57"}).
 		Bold(false)
+	s.Cell = s.Cell.
+		Foreground(bright)
 	t.SetStyles(s)
 
 	return model{
@@ -62,20 +151,18 @@ func newModel(session string) model {
 }
 
 func makeColumns(width int) []table.Column {
-	// Reserve space for borders (2) and column padding
 	usable := width - 4
 	if usable < 60 {
 		usable = 60
 	}
 
-	// Fixed-width columns
 	idW := 20
 	typeW := 8
-	priW := 2
-	statusW := 12
-	ownerW := 14
-	labelsW := 20
-	fixed := idW + typeW + priW + statusW + ownerW + labelsW
+	priW := 3
+	statusW := 14
+	labelsW := 22
+	descW := 30
+	fixed := idW + typeW + priW + statusW + labelsW + descW
 	titleW := usable - fixed
 	if titleW < 10 {
 		titleW = 10
@@ -84,25 +171,28 @@ func makeColumns(width int) []table.Column {
 	return []table.Column{
 		{Title: "ID", Width: idW},
 		{Title: "Type", Width: typeW},
-		{Title: "P", Width: priW},
+		{Title: "Pri", Width: priW},
 		{Title: "Status", Width: statusW},
-		{Title: "Owner", Width: ownerW},
 		{Title: "Labels", Width: labelsW},
 		{Title: "Title", Width: titleW},
+		{Title: "Description", Width: descW},
 	}
 }
 
-func beadsToRows(beads []Bead) []table.Row {
+func beadsToRows(beads []Bead, columns []table.Column) []table.Row {
 	rows := make([]table.Row, len(beads))
+	descW := columns[6].Width
 	for i, b := range beads {
+		desc := strings.ReplaceAll(b.Description, "\n", " ")
+		desc = truncate(desc, descW)
 		rows[i] = table.Row{
 			b.ID,
 			b.IssueType,
-			fmt.Sprintf("%d", b.Priority),
-			b.Status,
-			b.Owner,
+			priorityLabel(b.Priority),
+			statusIcon(b.Status),
 			strings.Join(b.Labels, ", "),
 			b.Title,
+			desc,
 		}
 	}
 	return rows
@@ -137,7 +227,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		columns := makeColumns(msg.Width)
 		m.table.SetColumns(columns)
-		tableHeight := msg.Height - 6 // header + footer + borders
+		m.table.SetRows(beadsToRows(m.beads, columns))
+		tableHeight := msg.Height - 6
 		if tableHeight < 3 {
 			tableHeight = 3
 		}
@@ -150,7 +241,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.err = nil
 			m.beads = msg.beads
-			m.table.SetRows(beadsToRows(msg.beads))
+			m.table.SetRows(beadsToRows(msg.beads, m.table.Columns()))
 		}
 
 	case tickMsg:
@@ -169,28 +260,33 @@ func (m model) View() string {
 
 	var b strings.Builder
 
-	header := fmt.Sprintf(" Rodeo Crush — %s — %d beads", m.session, len(m.beads))
+	// Header
+	header := titleStyle.Render("🤠 Rodeo Crush") +
+		"  " + sessionStyle.Render(m.session) +
+		"  " + countStyle.Render(fmt.Sprintf("%d beads", len(m.beads)))
 	if !m.lastRefresh.IsZero() {
-		header += fmt.Sprintf("  (updated %s)", m.lastRefresh.Format("15:04:05"))
+		header += "  " + timestampStyle.Render(m.lastRefresh.Format("15:04:05"))
 	}
-	b.WriteString(lipgloss.NewStyle().Bold(true).Render(header))
-	b.WriteString("\n")
+	b.WriteString(header)
+	b.WriteString("\n\n")
 
+	// Error
 	if m.err != nil {
-		b.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("196")).
-			Render(fmt.Sprintf(" Error: %v", m.err)))
-		b.WriteString("\n")
+		b.WriteString(errorStyle.Render(fmt.Sprintf("✗ %v", m.err)))
+		b.WriteString("\n\n")
 	}
 
+	// Table or empty state
 	if len(m.beads) == 0 && m.err == nil && !m.lastRefresh.IsZero() {
-		b.WriteString(baseStyle.Render(" No beads found. Waiting for agents to create work..."))
+		b.WriteString(emptyStyle.Render("No beads found. Waiting for agents to create work..."))
 		b.WriteString("\n")
 	} else {
-		b.WriteString(baseStyle.Render(m.table.View()))
+		b.WriteString(tableStyle.Render(m.table.View()))
 		b.WriteString("\n")
 	}
 
-	b.WriteString(" q/ctrl-c: quit • ↑↓/j/k: navigate")
+	// Footer
+	b.WriteString(helpStyle.Render("q quit • ↑↓ navigate • pgup/pgdn scroll"))
 	return b.String()
 }
 

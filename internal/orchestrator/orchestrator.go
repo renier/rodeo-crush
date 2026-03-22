@@ -19,6 +19,7 @@ const (
 	DefaultStallTimeout  = 15 * time.Minute
 	DefaultPollInterval  = 30 * time.Second
 	DefaultSocketTimeout = 10 * time.Second
+	DefaultWindowStagger = 15 * time.Second
 	promptLoopInterval   = 60 * time.Second
 	promptRetryDelay     = 2 * time.Second
 )
@@ -62,16 +63,17 @@ func writePromptFile(socketPath, prompt string) (string, error) {
 
 // Orchestrator manages the lifecycle of the rodeo team.
 type Orchestrator struct {
-	Config            *config.TeamConfig
-	ProjectDir        string
-	SocketDir         string
-	StallTimeout      time.Duration
-	PollInterval      time.Duration
-	SocketTimeout     time.Duration
+	Config             *config.TeamConfig
+	ProjectDir         string
+	SocketDir          string
+	StallTimeout       time.Duration
+	PollInterval       time.Duration
+	SocketTimeout      time.Duration
 	PromptLoopInterval time.Duration
-	Logger            *slog.Logger
-	Session           *tmux.Session
-	CrushRunner       CrushRunner
+	WindowStagger      time.Duration
+	Logger             *slog.Logger
+	Session            *tmux.Session
+	CrushRunner        CrushRunner
 }
 
 // New creates an Orchestrator with sensible defaults.
@@ -85,6 +87,7 @@ func New(cfg *config.TeamConfig, projectDir string) *Orchestrator {
 		PollInterval:       DefaultPollInterval,
 		SocketTimeout:      DefaultSocketTimeout,
 		PromptLoopInterval: promptLoopInterval,
+		WindowStagger:      DefaultWindowStagger,
 		Logger:             slog.Default(),
 		Session:            tmux.NewSession(cfg.Session, nil),
 		CrushRunner:        &ExecCrushRunner{},
@@ -150,12 +153,27 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 	}
 
 	o.Logger.Info("creating tmux session", "session", o.Config.Session, "windows", len(windows))
-	if err := o.Session.Create(windows); err != nil {
+	if err := o.Session.Create(windows[:1]); err != nil {
 		return fmt.Errorf("creating tmux session: %w", err)
 	}
+	go o.promptLoop(ctx, handles[0])
 
-	for _, h := range handles {
-		go o.promptLoop(ctx, h)
+	for i := 1; i < len(windows); i++ {
+		o.Logger.Info("waiting before starting next agent",
+			"next", handles[i].agent.Name, "delay", o.WindowStagger)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(o.WindowStagger):
+		}
+		if err := o.Session.AddWindow(windows[i]); err != nil {
+			return fmt.Errorf("creating window %d (%s): %w", i, windows[i].Name, err)
+		}
+		go o.promptLoop(ctx, handles[i])
+	}
+
+	if err := o.Session.SelectWindow(0); err != nil {
+		o.Logger.Warn("failed to select first window", "error", err)
 	}
 
 	o.Logger.Info("orchestration started",
