@@ -156,7 +156,7 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 
 		handles[i] = agentHandle{
 			agent:       agent,
-			windowIdx:   i,
+			windowIdx:   i + 1, // offset by 1: window 0 is the beads dashboard
 			socketPath:  socketPath,
 			crushCmd:    crushCmd,
 			promptFile:  promptFile,
@@ -164,22 +164,29 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 		}
 	}
 
-	o.Logger.Info("creating tmux session", "session", config.SessionPrefix, "windows", len(windows))
-	if err := o.Session.Create(windows[:1]); err != nil {
+	beadsWindow := tmux.WindowSpec{
+		Name:    "Beads",
+		Command: "rodeo beads",
+		Dir:     o.ProjectDir,
+	}
+
+	o.Logger.Info("creating tmux session", "session", config.SessionPrefix, "windows", len(windows)+1)
+	if err := o.Session.Create([]tmux.WindowSpec{beadsWindow}); err != nil {
 		return fmt.Errorf("creating tmux session: %w", err)
 	}
-	go o.promptLoop(ctx, handles[0])
 
-	for i := 1; i < len(windows); i++ {
-		o.Logger.Info("waiting before starting next agent",
-			"next", handles[i].agent.Name, "delay", o.WindowStagger)
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(o.WindowStagger):
+	for i := 0; i < len(windows); i++ {
+		if i > 0 {
+			o.Logger.Info("waiting before starting next agent",
+				"next", handles[i].agent.Name, "delay", o.WindowStagger)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(o.WindowStagger):
+			}
 		}
 		if err := o.Session.AddWindow(windows[i]); err != nil {
-			return fmt.Errorf("creating window %d (%s): %w", i, windows[i].Name, err)
+			return fmt.Errorf("creating window %d (%s): %w", i+1, windows[i].Name, err)
 		}
 		go o.promptLoop(ctx, handles[i])
 	}
