@@ -1,0 +1,7 @@
+.beads/.beads-credential-key
+# Dolt database files (added by bd init)
+.dolt/
+*.db
+
+# Build output
+/rodeo

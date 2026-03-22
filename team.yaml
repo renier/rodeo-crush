@@ -1,0 +1,49 @@
+---
+# Rodeo Crush Team Configuration (project override example)
+# This file uses the new dynamic roles format.
+# Prompt text can be inline (prompt:) or loaded from a file (prompt_file:).
+
+session: rodeo
+
+roles:
+  - name: Project Manager
+    count: 1
+    label: "role:project_manager"
+    prompt_file: prompts/project_manager.md
+    filter:
+      label: "role:project_manager"
+      status: open
+
+  - name: Architect
+    count: 1
+    label: "role:architect"
+    prompt_file: prompts/architect.md
+    filter:
+      label: "role:architect"
+      status: open
+
+  - name: Developer
+    count: 2
+    label: "role:developer"
+    prompt_file: prompts/developer.md
+    filter:
+      label: "role:developer"
+      ready: true
+    worktree: true
+
+  - name: Reviewer
+    count: 1
+    label: "role:reviewer"
+    prompt_file: prompts/reviewer.md
+    filter:
+      label: "role:reviewer"
+      status: in_progress
+
+  - name: Tester
+    count: 1
+    label: "role:tester"
+    prompt_file: prompts/tester.md
+    filter:
+      label: "role:tester"
+      status: in_progress
+    worktree: true

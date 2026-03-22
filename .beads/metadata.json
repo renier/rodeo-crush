@@ -1,0 +1,8 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_server_port": 50686,
+  "dolt_database": "rodeo_crush",
+  "project_id": "940fcaf8-af09-431d-9e2a-276b6bcd5bd0"
+}
