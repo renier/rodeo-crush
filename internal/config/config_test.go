@@ -8,13 +8,10 @@ import (
 
 func TestDefaultTeam(t *testing.T) {
 	cfg := DefaultTeam()
-	if cfg.Session != "rodeo" {
-		t.Errorf("expected session 'rodeo', got %q", cfg.Session)
+	if len(cfg.Roles) != 4 {
+		t.Fatalf("expected 4 roles, got %d", len(cfg.Roles))
 	}
-	if len(cfg.Roles) != 5 {
-		t.Fatalf("expected 5 roles, got %d", len(cfg.Roles))
-	}
-	devRole := cfg.Roles[2]
+	devRole := cfg.Roles[1]
 	if devRole.Name != "Developer" || devRole.Count != 2 {
 		t.Errorf("expected Developer count 2, got %s count %d", devRole.Name, devRole.Count)
 	}
@@ -26,8 +23,7 @@ func TestDefaultTeam(t *testing.T) {
 func TestLoadFromFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "team.yaml")
-	data := []byte(`session: test-rodeo
-roles:
+	data := []byte(`roles:
   - name: Dev
     count: 3
     label: "role:dev"
@@ -52,9 +48,6 @@ roles:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Session != "test-rodeo" {
-		t.Errorf("expected session 'test-rodeo', got %q", cfg.Session)
-	}
 	if len(cfg.Roles) != 2 {
 		t.Fatalf("expected 2 roles, got %d", len(cfg.Roles))
 	}
@@ -74,8 +67,8 @@ func TestLoadEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cfg.Roles) != 5 {
-		t.Errorf("expected default 5 roles, got %d", len(cfg.Roles))
+	if len(cfg.Roles) != 4 {
+		t.Errorf("expected default 4 roles, got %d", len(cfg.Roles))
 	}
 }
 
@@ -89,17 +82,16 @@ func TestValidate(t *testing.T) {
 		cfg     TeamConfig
 		wantErr bool
 	}{
-		{"valid", TeamConfig{Session: "x", Roles: []RoleDef{validRole}}, false},
-		{"empty session", TeamConfig{Roles: []RoleDef{validRole}}, true},
-		{"no roles", TeamConfig{Session: "x"}, true},
-		{"negative count", TeamConfig{Session: "x", Roles: []RoleDef{{Name: "A", Count: -1, Label: "role:a", Prompt: "p", Filter: RoleFilter{Label: "role:a"}}}}, true},
-		{"no name", TeamConfig{Session: "x", Roles: []RoleDef{{Count: 1, Label: "role:a", Prompt: "p", Filter: RoleFilter{Label: "role:a"}}}}, true},
-		{"no label", TeamConfig{Session: "x", Roles: []RoleDef{{Name: "A", Count: 1, Prompt: "p", Filter: RoleFilter{Label: "role:a"}}}}, true},
-		{"no filter label", TeamConfig{Session: "x", Roles: []RoleDef{{Name: "A", Count: 1, Label: "role:a", Prompt: "p"}}}, true},
-		{"no prompt", TeamConfig{Session: "x", Roles: []RoleDef{{Name: "A", Count: 1, Label: "role:a", Filter: RoleFilter{Label: "role:a"}}}}, true},
-		{"prompt_file ok", TeamConfig{Session: "x", Roles: []RoleDef{{Name: "A", Count: 1, Label: "role:a", PromptFile: "a.md", Filter: RoleFilter{Label: "role:a"}}}}, false},
-		{"duplicate names", TeamConfig{Session: "x", Roles: []RoleDef{validRole, validRole}}, true},
-		{"all zero counts", TeamConfig{Session: "x", Roles: []RoleDef{{Name: "A", Count: 0, Label: "role:a", Prompt: "p", Filter: RoleFilter{Label: "role:a"}}}}, true},
+		{"valid", TeamConfig{Roles: []RoleDef{validRole}}, false},
+		{"no roles", TeamConfig{}, true},
+		{"negative count", TeamConfig{Roles: []RoleDef{{Name: "A", Count: -1, Label: "role:a", Prompt: "p", Filter: RoleFilter{Label: "role:a"}}}}, true},
+		{"no name", TeamConfig{Roles: []RoleDef{{Count: 1, Label: "role:a", Prompt: "p", Filter: RoleFilter{Label: "role:a"}}}}, true},
+		{"no label", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Prompt: "p", Filter: RoleFilter{Label: "role:a"}}}}, true},
+		{"no filter label", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Label: "role:a", Prompt: "p"}}}, true},
+		{"no prompt", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Label: "role:a", Filter: RoleFilter{Label: "role:a"}}}}, true},
+		{"prompt_file ok", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Label: "role:a", PromptFile: "a.md", Filter: RoleFilter{Label: "role:a"}}}}, false},
+		{"duplicate names", TeamConfig{Roles: []RoleDef{validRole, validRole}}, true},
+		{"all zero counts", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 0, Label: "role:a", Prompt: "p", Filter: RoleFilter{Label: "role:a"}}}}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -113,7 +105,6 @@ func TestValidate(t *testing.T) {
 
 func TestAgents(t *testing.T) {
 	cfg := &TeamConfig{
-		Session: "test",
 		Roles: []RoleDef{
 			{Name: "PM", Count: 1, Label: "role:pm", Prompt: "p", Filter: RoleFilter{Label: "role:pm"}},
 			{Name: "Dev", Count: 2, Label: "role:dev", Prompt: "p", Filter: RoleFilter{Label: "role:dev"}},
@@ -180,7 +171,6 @@ func TestResolvePrompts(t *testing.T) {
 	}
 
 	cfg := &TeamConfig{
-		Session: "test",
 		Roles: []RoleDef{
 			{Name: "Inline", Count: 1, Label: "role:a", Prompt: "already set", Filter: RoleFilter{Label: "role:a"}},
 			{Name: "FromFile", Count: 1, Label: "role:b", PromptFile: "my_role.md", Filter: RoleFilter{Label: "role:b"}},
@@ -207,7 +197,6 @@ func TestResolvePromptsAbsolutePath(t *testing.T) {
 	}
 
 	cfg := &TeamConfig{
-		Session: "test",
 		Roles: []RoleDef{
 			{Name: "Abs", Count: 1, Label: "role:a", PromptFile: promptFile, Filter: RoleFilter{Label: "role:a"}},
 		},
@@ -268,7 +257,7 @@ func TestBootstrapIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	customContent := "# my custom config\nsession: custom\nroles:\n  - name: X\n    count: 1\n    label: \"role:x\"\n    prompt: \"x\"\n    filter:\n      label: \"role:x\"\n      status: open\n"
+	customContent := "# my custom config\nroles:\n  - name: X\n    count: 1\n    label: \"role:x\"\n    prompt: \"x\"\n    filter:\n      label: \"role:x\"\n      status: open\n"
 	teamPath := filepath.Join(cfgDir, "team.yaml")
 	if err := os.WriteFile(teamPath, []byte(customContent), 0644); err != nil {
 		t.Fatal(err)

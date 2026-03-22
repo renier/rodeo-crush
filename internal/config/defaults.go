@@ -1,25 +1,12 @@
 package config
 
-func DefaultProjectManager() RoleDef {
-	return RoleDef{
-		Name:           "Project Manager",
-		Count:          1,
-		Label:          "role:project_manager",
-		PromptFile:     "prompts/project_manager.md",
-		SendPromptOnce: true,
-		Filter: RoleFilter{
-			Label:  "role:project_manager",
-			Status: "open",
-		},
-	}
-}
-
 func DefaultArchitect() RoleDef {
 	return RoleDef{
-		Name:       "Architect",
-		Count:      1,
-		Label:      "role:architect",
-		PromptFile: "prompts/architect.md",
+		Name:           "Architect",
+		Count:          1,
+		Label:          "role:architect",
+		PromptFile:     "prompts/architect.md",
+		SendPromptOnce: true,
 		Filter: RoleFilter{
 			Label:  "role:architect",
 			Status: "open",

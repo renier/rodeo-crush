@@ -78,7 +78,7 @@ type Orchestrator struct {
 
 // New creates an Orchestrator with sensible defaults.
 func New(cfg *config.TeamConfig, projectDir string) *Orchestrator {
-	socketDir := filepath.Join(os.TempDir(), "rodeo-crush", cfg.Session)
+	socketDir := filepath.Join(os.TempDir(), config.ConfigDirName, config.SessionPrefix)
 	return &Orchestrator{
 		Config:             cfg,
 		ProjectDir:         projectDir,
@@ -89,18 +89,19 @@ func New(cfg *config.TeamConfig, projectDir string) *Orchestrator {
 		PromptLoopInterval: promptLoopInterval,
 		WindowStagger:      DefaultWindowStagger,
 		Logger:             slog.Default(),
-		Session:            tmux.NewSession(cfg.Session, nil),
+		Session:            tmux.NewSession(config.SessionPrefix, nil),
 		CrushRunner:        &ExecCrushRunner{},
 	}
 }
 
 // agentHandle holds everything needed to (re)start an agent.
 type agentHandle struct {
-	agent      config.Agent
-	windowIdx  int
-	socketPath string
-	crushCmd   string
-	promptFile string
+	agent       config.Agent
+	windowIdx   int
+	socketPath  string
+	crushCmd    string
+	promptFile  string
+	isArchitect bool
 }
 
 // Start launches tmux windows running Crush TUIs, starts a prompt loop
@@ -116,16 +117,26 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 	}
 
 	if o.Session.Exists() {
-		o.Logger.Info("killing existing session", "session", o.Config.Session)
+		o.Logger.Info("killing existing session", "session", config.SessionPrefix)
 		_ = o.Session.Kill()
 		time.Sleep(500 * time.Millisecond)
 	}
+
+	hasSeed := fileExists(filepath.Join(o.ProjectDir, "SEED.md"))
 
 	handles := make([]agentHandle, len(agents))
 	windows := make([]tmux.WindowSpec, len(agents))
 	for i, agent := range agents {
 		socketPath := agent.SocketPath(o.SocketDir)
-		prompt := roles.Prompt(agent, o.ProjectDir)
+		isArchitect := agent.RoleDef.SendPromptOnce && agent.RoleDef.Label == "role:architect"
+
+		var prompt string
+		if isArchitect && !hasSeed {
+			o.Logger.Info("no SEED.md found, architect will stand by", "agent", agent.Name)
+			prompt = "Stand by for instructions."
+		} else {
+			prompt = roles.Prompt(agent, o.ProjectDir)
+		}
 
 		promptFile, err := writePromptFile(socketPath, prompt)
 		if err != nil {
@@ -144,15 +155,16 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 		}
 
 		handles[i] = agentHandle{
-			agent:      agent,
-			windowIdx:  i,
-			socketPath: socketPath,
-			crushCmd:   crushCmd,
-			promptFile: promptFile,
+			agent:       agent,
+			windowIdx:   i,
+			socketPath:  socketPath,
+			crushCmd:    crushCmd,
+			promptFile:  promptFile,
+			isArchitect: isArchitect,
 		}
 	}
 
-	o.Logger.Info("creating tmux session", "session", o.Config.Session, "windows", len(windows))
+	o.Logger.Info("creating tmux session", "session", config.SessionPrefix, "windows", len(windows))
 	if err := o.Session.Create(windows[:1]); err != nil {
 		return fmt.Errorf("creating tmux session: %w", err)
 	}
@@ -177,7 +189,7 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 	}
 
 	o.Logger.Info("orchestration started",
-		"session", o.Config.Session,
+		"session", config.SessionPrefix,
 		"agents", len(agents),
 		"stall_timeout", o.StallTimeout,
 	)
@@ -235,7 +247,7 @@ func (o *Orchestrator) promptLoop(ctx context.Context, h agentHandle) {
 
 // Stop tears down the tmux session.
 func (o *Orchestrator) Stop() error {
-	o.Logger.Info("stopping orchestration", "session", o.Config.Session)
+	o.Logger.Info("stopping orchestration", "session", config.SessionPrefix)
 	if err := o.Session.Kill(); err != nil {
 		return err
 	}
@@ -344,4 +356,9 @@ func shellEscape(s string) string {
 		return s
 	}
 	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }

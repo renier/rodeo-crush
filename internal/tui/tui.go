@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/renier/rodeo-crush/internal/config"
 )
 
 const refreshInterval = 5 * time.Second
@@ -23,10 +24,6 @@ var (
 			Bold(true).
 			Foreground(accent).
 			PaddingLeft(1)
-
-	sessionStyle = lipgloss.NewStyle().
-			Foreground(bright).
-			Bold(true)
 
 	countStyle = lipgloss.NewStyle().
 			Foreground(subtle)
@@ -69,7 +66,6 @@ type beadsMsg struct {
 
 type model struct {
 	table       table.Model
-	session     string
 	beads       []Bead
 	lastRefresh time.Time
 	err         error
@@ -120,7 +116,7 @@ func truncate(s string, max int) string {
 	return s[:max-3] + "..."
 }
 
-func newModel(session string) model {
+func newModel() model {
 	columns := makeColumns(80)
 	t := table.New(
 		table.WithColumns(columns),
@@ -145,8 +141,7 @@ func newModel(session string) model {
 	t.SetStyles(s)
 
 	return model{
-		table:   t,
-		session: session,
+		table: t,
 	}
 }
 
@@ -261,8 +256,7 @@ func (m model) View() string {
 	var b strings.Builder
 
 	// Header
-	header := titleStyle.Render("🤠 Rodeo Crush") +
-		"  " + sessionStyle.Render(m.session) +
+	header := titleStyle.Render(config.AppName) +
 		"  " + countStyle.Render(fmt.Sprintf("%d beads", len(m.beads)))
 	if !m.lastRefresh.IsZero() {
 		header += "  " + timestampStyle.Render(m.lastRefresh.Format("15:04:05"))
@@ -291,9 +285,9 @@ func (m model) View() string {
 }
 
 // Run starts the Bubble Tea TUI. It blocks until the user quits.
-func Run(session string) error {
+func Run() error {
 	p := tea.NewProgram(
-		newModel(session),
+		newModel(),
 		tea.WithAltScreen(),
 	)
 	_, err := p.Run()

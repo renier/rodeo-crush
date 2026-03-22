@@ -1,4 +1,4 @@
-# Rodeo Crush
+# Rodeo🤠Crush💖
 
 An orchestration harness that runs a team of [Crush](https://github.com/renier/crush/tree/headless-prompts) AI agents in tmux windows, coordinated through the [beads](https://github.com/bead-code/beads) issue tracker.
 
@@ -10,13 +10,14 @@ Rodeo Crush spins up a tmux session with multiple Crush TUI instances, each assi
 
 | Role | What it does |
 |---|---|
-| **Project Manager** | Reads high-level specs, breaks them into requirement beads |
-| **Architect** | Turns requirements into a technical design (DESIGN.md), sets acceptance criteria |
+| **Architect** | Reads SEED.md, produces a technical design (DESIGN.md), creates implementation beads |
 | **Developer** | Implements code in git worktrees, one bead at a time |
 | **Reviewer** | Reviews code for correctness and design adherence |
 | **Tester** | Writes and runs tests, closes beads that pass |
 
-Work flows through the pipeline via beads labels (`role:project_manager` -> `role:architect` -> `role:developer` -> `role:reviewer` -> `role:tester`). Each agent continuously polls for beads matching its role and processes them.
+Work flows through the pipeline via beads labels (`role:developer` -> `role:reviewer` -> `role:tester`). The Architect kicks things off by reading `SEED.md` and creating `role:developer` beads. Each subsequent agent continuously polls for beads matching its role and processes them.
+
+If no `SEED.md` is present in the project directory, the Architect starts idle with a "stand by for instructions" prompt — you can send it work manually via the Crush TUI.
 
 A background monitor watches for stalled agents and prods them back to work.
 
@@ -64,8 +65,11 @@ make ci             Run full CI pipeline (lint, race tests, build)
 ## Usage
 
 ```bash
-# Use defaults (looks for team.yaml in current dir)
+# Start the orchestrator (runs in foreground, Ctrl+C to stop)
 rodeo
+
+# Monitor beads progress in another terminal
+rodeo beads
 
 # Custom team config
 rodeo -t my-team.yaml
@@ -83,8 +87,9 @@ rodeo -s 5m -p 1m
 |---|---|---|
 | `-t, --team` | Team config YAML file | `~/.config/rodeo-crush/team.yaml` |
 | `-d, --dir` | Project directory | Current directory |
-| `-s, --stall` | Stall timeout before prodding agents | `3m` |
+| `-s, --stall` | Stall timeout before prodding agents | `15m` |
 | `-p, --poll` | Poll interval for stall detection | `30s` |
+| `-l, --log` | Log file path | `~/.config/rodeo-crush/rodeo-crush.log` |
 
 ## Configuration
 
@@ -94,7 +99,6 @@ On first run, Rodeo Crush creates a config directory at `~/.config/rodeo-crush/`
 ~/.config/rodeo-crush/
   team.yaml                  # Team configuration
   prompts/
-    project_manager.md       # Project Manager system prompt
     architect.md             # Architect system prompt
     developer.md             # Developer system prompt
     reviewer.md              # Reviewer system prompt
@@ -108,15 +112,14 @@ Edit these files to customize the system. Existing files are never overwritten.
 The `team.yaml` defines your team as a list of roles. Each role specifies its name, how many agents to run, its beads label, how to find work, and the system prompt to use:
 
 ```yaml
-session: rodeo
-
 roles:
-  - name: Project Manager
+  - name: Architect
     count: 1
-    label: "role:project_manager"
-    prompt_file: prompts/project_manager.md
+    label: "role:architect"
+    prompt_file: prompts/architect.md
+    send_prompt_once: true
     filter:
-      label: "role:project_manager"
+      label: "role:architect"
       status: open
 
   - name: Developer
@@ -150,6 +153,7 @@ roles:
 | `filter.status` | no | Status filter (`open`, `in_progress`, `blocked`) |
 | `filter.ready` | no | If `true`, only pick up beads with all deps resolved |
 | `worktree` | no | If `true`, agent gets git worktree instructions |
+| `send_prompt_once` | no | If `true`, prompt is sent once and the agent is not re-prompted |
 
 \* One of `prompt` or `prompt_file` is required. If both are set, `prompt` takes precedence.
 
@@ -219,22 +223,25 @@ Prompt file paths in that config resolve relative to the directory containing th
 ## Architecture
 
 ```
-cmd/rodeo/              CLI entrypoint
+cmd/rodeo/              CLI entrypoint (subcommands: rodeo, rodeo beads)
 internal/
   config/               Team YAML parsing, validation, config dir bootstrap
   roles/                Prompt assembly (preamble + user prompt + work loop + worktree)
   tmux/                 tmux session/window management
-  orchestrator/         Lifecycle management, stall detection, agent prodding
+  orchestrator/         Lifecycle management, SEED.md detection, stall detection, agent prodding
+  tui/                  Bubble Tea beads dashboard (rodeo beads)
 ```
 
 Each agent gets its own tmux window running `crush --listen <socket>`, which starts the full Crush TUI. The orchestrator then sends the initial prompt to each agent via `crush run --socket <socket>` from a Go goroutine outside tmux. This two-phase approach lets users see the live TUI in each window -- tab between agents with `Ctrl-b n` / `Ctrl-b p`. The monitor captures window output to detect stalls and prods agents through the same socket mechanism.
 
 ## Workflow
 
-1. Create a bead labeled `role:project_manager` with your project spec
-2. Run `rodeo`
-3. Watch the agents collaborate in tmux (`tmux attach -t rodeo`), tab between windows with `Ctrl-b n` / `Ctrl-b p`
-4. Beads flow through the pipeline automatically until tests pass and work is closed
+1. Write a `SEED.md` in your project root describing what you want built
+2. Run `rodeo` to start the orchestrator
+3. Run `rodeo beads` in another terminal to monitor progress
+4. Watch the agents collaborate in tmux (`tmux attach -t rodeo`), tab between windows with `Ctrl-b n` / `Ctrl-b p`
+5. The Architect reads SEED.md, creates DESIGN.md and implementation beads
+6. Beads flow through the pipeline automatically until tests pass and work is closed
 
 ## License
 

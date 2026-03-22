@@ -32,8 +32,8 @@ func TestPromptContainsRole(t *testing.T) {
 		contains []string
 	}{
 		{
-			makeAgent("Project Manager", "role:project_manager", "You are the PM", false),
-			[]string{"Project Manager", "role:project_manager", "Finding Work", "You are the PM"},
+			makeAgent("Architect", "role:architect", "You are the architect", false),
+			[]string{"Architect", "role:architect", "Finding Work", "You are the architect"},
 		},
 		{
 			makeAgent("Developer", "role:developer", "You are a dev", true),

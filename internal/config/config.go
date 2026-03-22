@@ -9,7 +9,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const ConfigDirName = "rodeo-crush"
+const (
+	ConfigDirName = "rodeo-crush"
+	AppName       = "Rodeo\U0001f920Crush\U0001f496"
+	SessionPrefix = "rodeo"
+)
 
 // ConfigDir returns the path to $HOME/.config/rodeo-crush/.
 func ConfigDir() (string, error) {
@@ -23,9 +27,7 @@ func ConfigDir() (string, error) {
 // DefaultTeam returns the default team configuration.
 func DefaultTeam() *TeamConfig {
 	return &TeamConfig{
-		Session: "rodeo",
 		Roles: []RoleDef{
-			DefaultProjectManager(),
 			DefaultArchitect(),
 			DefaultDeveloper(),
 			DefaultReviewer(),
@@ -35,8 +37,7 @@ func DefaultTeam() *TeamConfig {
 }
 
 type TeamConfig struct {
-	Session string    `yaml:"session"`
-	Roles   []RoleDef `yaml:"roles"`
+	Roles []RoleDef `yaml:"roles"`
 }
 
 type RoleDef struct {
@@ -94,9 +95,6 @@ func Load(path string) (*TeamConfig, error) {
 
 // Validate checks that the configuration is sensible.
 func (c *TeamConfig) Validate() error {
-	if c.Session == "" {
-		return fmt.Errorf("session name cannot be empty")
-	}
 	if len(c.Roles) == 0 {
 		return fmt.Errorf("at least one role must be defined")
 	}

@@ -64,7 +64,6 @@ func (f *fakeRunner) called(substr string) bool {
 
 func testTeamConfig() *config.TeamConfig {
 	return &config.TeamConfig{
-		Session: "test",
 		Roles: []config.RoleDef{
 			{
 				Name: "Developer", Count: 1, Label: "role:developer",
@@ -332,12 +331,11 @@ func TestPromptLoopWaitsForSocket(t *testing.T) {
 
 func testSendOnceConfig() *config.TeamConfig {
 	return &config.TeamConfig{
-		Session: "test",
 		Roles: []config.RoleDef{
 			{
-				Name: "Project Manager", Count: 1, Label: "role:project_manager",
-				Prompt:         "You are a PM.",
-				Filter:         config.RoleFilter{Label: "role:project_manager", Status: "open"},
+				Name: "Architect", Count: 1, Label: "role:architect",
+				Prompt:         "You are the architect.",
+				Filter:         config.RoleFilter{Label: "role:architect", Status: "open"},
 				SendPromptOnce: true,
 			},
 		},
