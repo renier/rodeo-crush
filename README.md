@@ -1,6 +1,6 @@
 # Rodeo🤠Crush💖
 
-An orchestration harness that runs a team of [Crush](https://github.com/renier/crush/tree/headless-prompts) AI agents in tmux windows, coordinated through the [beads](https://github.com/bead-code/beads) issue tracker.
+An orchestration harness that runs a team of [Crush](https://github.com/renier/crush/tree/headless-prompting) AI agents in tmux windows, coordinated through the [beads](https://github.com/bead-code/beads) issue tracker.
 
 **NOTE**: Highly experimental and subject to change. Created as a proof of concept using a fork of crush, that adds additional options to the cli. The core idea is to use Crush agents as specialized workers in a software development pipeline, with tmux for visibility and beads for task management. Use at your own risk!
 
@@ -24,7 +24,7 @@ A background monitor watches for stalled agents and prods them back to work.
 ## Requirements
 
 - [tmux](https://github.com/tmux/tmux)
-- [Crush](https://github.com/renier/crush/tree/headless-prompts) (headless-prompts branch)
+- [Crush](https://github.com/renier/crush/tree/headless-prompting) (headless-prompting branch)
 - [bd (beads)](https://github.com/bead-code/beads) issue tracker
 - Go 1.26+
 
