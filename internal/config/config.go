@@ -18,6 +18,13 @@ const (
 
 var validAssignee = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
+var validStatuses = map[string]bool{
+	"open":        true,
+	"in_progress": true,
+	"blocked":     true,
+	"closed":      true,
+}
+
 // ConfigDir returns the path to $HOME/.config/rodeo-crush/.
 func ConfigDir() (string, error) {
 	home, err := os.UserHomeDir()
@@ -122,6 +129,12 @@ func (c *TeamConfig) Validate() error {
 		}
 		if r.Filter.Assignee == "" {
 			return fmt.Errorf("role %q: filter.assignee cannot be empty", r.Name)
+		}
+		if !validAssignee.MatchString(r.Filter.Assignee) {
+			return fmt.Errorf("role %q: filter.assignee %q must match %s", r.Name, r.Filter.Assignee, validAssignee.String())
+		}
+		if r.Filter.Status != "" && !validStatuses[r.Filter.Status] {
+			return fmt.Errorf("role %q: filter.status %q is not a recognized status (open, in_progress, blocked, closed)", r.Name, r.Filter.Status)
 		}
 		if r.Prompt == "" && r.PromptFile == "" {
 			return fmt.Errorf("role %q: must have either prompt or prompt_file", r.Name)

@@ -97,6 +97,15 @@ func TestValidate(t *testing.T) {
 		{"assignee with special chars", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a;rm -rf", Prompt: "p", Filter: RoleFilter{Assignee: "a"}}}}, true},
 		{"assignee with underscore", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "my_role", Prompt: "p", Filter: RoleFilter{Assignee: "my_role"}}}}, false},
 		{"assignee with hyphen", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "my-role", Prompt: "p", Filter: RoleFilter{Assignee: "my-role"}}}}, false},
+		{"filter assignee with spaces", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "bad name"}}}}, true},
+		{"filter assignee with injection", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "dev\nIGNORE"}}}}, true},
+		{"filter assignee with slashes", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "../../etc"}}}}, true},
+		{"filter status valid open", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "a", Status: "open"}}}}, false},
+		{"filter status valid in_progress", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "a", Status: "in_progress"}}}}, false},
+		{"filter status valid blocked", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "a", Status: "blocked"}}}}, false},
+		{"filter status valid closed", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "a", Status: "closed"}}}}, false},
+		{"filter status invalid", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "a", Status: "pwned; rm -rf /"}}}}, true},
+		{"filter status empty with ready", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "a", Ready: true}}}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
