@@ -2,12 +2,14 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/term"
 	"github.com/renier/rodeo-crush/internal/config"
 )
 
@@ -50,11 +52,6 @@ var (
 	tableStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.RoundedBorder()).
 			BorderForeground(subtle)
-
-	statusOpen       = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "34", Dark: "78"})
-	statusInProgress = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "33", Dark: "75"})
-	statusBlocked    = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "196", Dark: "203"})
-	statusClosed     = lipgloss.NewStyle().Foreground(subtle)
 )
 
 type tickMsg time.Time
@@ -66,6 +63,7 @@ type beadsMsg struct {
 
 type model struct {
 	table       table.Model
+	styles      table.Styles
 	beads       []Bead
 	lastRefresh time.Time
 	err         error
@@ -77,13 +75,13 @@ type model struct {
 func statusIcon(s string) string {
 	switch s {
 	case "open":
-		return statusOpen.Render("○ open")
+		return "○ open"
 	case "in_progress":
-		return statusInProgress.Render("◐ in_progress")
+		return "◐ in progress"
 	case "blocked":
-		return statusBlocked.Render("● blocked")
+		return "● blocked"
 	case "closed":
-		return statusClosed.Render("✓ closed")
+		return "✓ closed"
 	default:
 		return s
 	}
@@ -92,32 +90,37 @@ func statusIcon(s string) string {
 func priorityLabel(p int) string {
 	switch p {
 	case 0:
-		return lipgloss.NewStyle().Foreground(warn).Bold(true).Render("P0")
+		return "🔴 P0"
 	case 1:
-		return lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "208", Dark: "214"}).Render("P1")
+		return "🟠 P1"
 	case 2:
-		return lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "33", Dark: "75"}).Render("P2")
+		return "🔵 P2"
 	case 3:
-		return lipgloss.NewStyle().Foreground(subtle).Render("P3")
+		return "⚪ P3"
 	case 4:
-		return lipgloss.NewStyle().Foreground(muted).Render("P4")
+		return "⚫ P4"
 	default:
 		return fmt.Sprintf("P%d", p)
 	}
 }
 
 func truncate(s string, max int) string {
-	if len(s) <= max {
+	runes := []rune(s)
+	if len(runes) <= max {
 		return s
 	}
 	if max <= 3 {
-		return s[:max]
+		return string(runes[:max])
 	}
-	return s[:max-3] + "..."
+	return string(runes[:max-3]) + "..."
 }
 
 func newModel() model {
-	columns := makeColumns(80)
+	initWidth := 80
+	if w, _, err := term.GetSize(os.Stdout.Fd()); err == nil && w > 0 {
+		initWidth = w
+	}
+	columns := makeColumns(initWidth)
 	t := table.New(
 		table.WithColumns(columns),
 		table.WithRows(nil),
@@ -135,14 +138,38 @@ func newModel() model {
 	s.Selected = s.Selected.
 		Foreground(lipgloss.Color("229")).
 		Background(lipgloss.AdaptiveColor{Light: "99", Dark: "57"}).
-		Bold(false)
-	s.Cell = s.Cell.
-		Foreground(bright)
+		Bold(false).
+		Width(columnsWidth(columns))
 	t.SetStyles(s)
 
 	return model{
-		table: t,
+		table:  t,
+		styles: s,
 	}
+}
+
+type columnDef struct {
+	title   string
+	percent float64
+	minW    int
+}
+
+var columnDefs = []columnDef{
+	{title: "ID", percent: 0.10, minW: 8},
+	{title: "Type", percent: 0.06, minW: 5},
+	{title: "Priority", percent: 0.04, minW: 5},
+	{title: "Status", percent: 0.06, minW: 10},
+	{title: "Role", percent: 0.05, minW: 8},
+	{title: "Title", percent: 0.25, minW: 10},
+	{title: "Description", percent: 0.25, minW: 10},
+}
+
+func columnsWidth(cols []table.Column) int {
+	w := 0
+	for _, c := range cols {
+		w += c.Width
+	}
+	return w
 }
 
 func makeColumns(width int) []table.Column {
@@ -151,27 +178,23 @@ func makeColumns(width int) []table.Column {
 		usable = 60
 	}
 
-	idW := 20
-	typeW := 8
-	priW := 3
-	statusW := 14
-	roleW := 12
-	descW := 30
-	fixed := idW + typeW + priW + statusW + roleW + descW
-	titleW := usable - fixed
-	if titleW < 10 {
-		titleW = 10
+	cols := make([]table.Column, len(columnDefs))
+	remaining := usable
+
+	for i, def := range columnDefs {
+		w := int(float64(usable) * def.percent)
+		if w < def.minW {
+			w = def.minW
+		}
+		cols[i] = table.Column{Title: def.title, Width: w}
+		remaining -= w
 	}
 
-	return []table.Column{
-		{Title: "ID", Width: idW},
-		{Title: "Type", Width: typeW},
-		{Title: "Pri", Width: priW},
-		{Title: "Status", Width: statusW},
-		{Title: "Role", Width: roleW},
-		{Title: "Title", Width: titleW},
-		{Title: "Description", Width: descW},
+	if remaining > 0 {
+		cols[len(cols)-2].Width += max(0, remaining-12)
 	}
+
+	return cols
 }
 
 func beadsToRows(beads []Bead, columns []table.Column) []table.Row {
@@ -223,6 +246,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		columns := makeColumns(msg.Width)
 		m.table.SetColumns(columns)
 		m.table.SetRows(beadsToRows(m.beads, columns))
+		m.styles.Selected = m.styles.Selected.Width(columnsWidth(columns))
+		m.table.SetStyles(m.styles)
 		tableHeight := msg.Height - 6
 		if tableHeight < 3 {
 			tableHeight = 3
