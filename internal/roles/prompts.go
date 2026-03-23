@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/renier/rodeo-crush/internal/config"
+	"github.com/renier/rodeo-crush/internal/shellutil"
 )
 
 // Prompt generates the full system prompt for a given agent by combining the
@@ -52,6 +53,7 @@ Process:
 }
 
 func worktreeInstructions(projectDir string) string {
+	escaped := shellutil.ShellEscape(projectDir)
 	return fmt.Sprintf(`## Git Worktree Instructions
 
 For each bead you work on, use a separate git worktree to avoid conflicts:
@@ -80,5 +82,5 @@ git branch -d work/${BEAD_ID}
 `+"```"+`
 
 IMPORTANT: Always rebase against the source branch before merging back.
-Handle any rebase conflicts yourself.`, projectDir, projectDir, projectDir, projectDir, projectDir, projectDir)
+Handle any rebase conflicts yourself.`, escaped, escaped, escaped, escaped, escaped, escaped)
 }

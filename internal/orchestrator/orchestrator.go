@@ -12,6 +12,7 @@ import (
 
 	"github.com/renier/rodeo-crush/internal/config"
 	"github.com/renier/rodeo-crush/internal/roles"
+	"github.com/renier/rodeo-crush/internal/shellutil"
 	"github.com/renier/rodeo-crush/internal/tmux"
 )
 
@@ -160,9 +161,9 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 		o.dataDirs = append(o.dataDirs, tuiDataDir, runDataDir)
 
 		crushCmd := fmt.Sprintf("crush -D %s --listen %s --cwd %s",
-			shellEscape(tuiDataDir),
-			shellEscape(socketPath),
-			shellEscape(o.ProjectDir),
+			shellutil.ShellEscape(tuiDataDir),
+			shellutil.ShellEscape(socketPath),
+			shellutil.ShellEscape(o.ProjectDir),
 		)
 
 		windows[i] = tmux.WindowSpec{
@@ -378,13 +379,6 @@ func (o *Orchestrator) restartAgent(h agentHandle) error {
 	}
 
 	return nil
-}
-
-func shellEscape(s string) string {
-	if !strings.ContainsAny(s, " \t\n'\"\\$`!#&|;(){}[]<>?*~") {
-		return s
-	}
-	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
 }
 
 func fileExists(path string) bool {

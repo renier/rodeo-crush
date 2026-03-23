@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -14,6 +15,8 @@ const (
 	AppName       = "Rodeo\U0001f920Crush\U0001f496"
 	SessionPrefix = "rodeo"
 )
+
+var validAssignee = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 // ConfigDir returns the path to $HOME/.config/rodeo-crush/.
 func ConfigDir() (string, error) {
@@ -113,6 +116,9 @@ func (c *TeamConfig) Validate() error {
 		}
 		if r.Assignee == "" {
 			return fmt.Errorf("role %q: assignee cannot be empty", r.Name)
+		}
+		if !validAssignee.MatchString(r.Assignee) {
+			return fmt.Errorf("role %q: assignee %q must match %s", r.Name, r.Assignee, validAssignee.String())
 		}
 		if r.Filter.Assignee == "" {
 			return fmt.Errorf("role %q: filter.assignee cannot be empty", r.Name)

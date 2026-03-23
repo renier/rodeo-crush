@@ -92,6 +92,11 @@ func TestValidate(t *testing.T) {
 		{"prompt_file ok", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a", PromptFile: "a.md", Filter: RoleFilter{Assignee: "a"}}}}, false},
 		{"duplicate names", TeamConfig{Roles: []RoleDef{validRole, validRole}}, true},
 		{"all zero counts", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 0, Assignee: "a", Prompt: "p", Filter: RoleFilter{Assignee: "a"}}}}, true},
+		{"assignee with spaces", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "bad name", Prompt: "p", Filter: RoleFilter{Assignee: "a"}}}}, true},
+		{"assignee with slashes", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "../../etc", Prompt: "p", Filter: RoleFilter{Assignee: "a"}}}}, true},
+		{"assignee with special chars", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "a;rm -rf", Prompt: "p", Filter: RoleFilter{Assignee: "a"}}}}, true},
+		{"assignee with underscore", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "my_role", Prompt: "p", Filter: RoleFilter{Assignee: "my_role"}}}}, false},
+		{"assignee with hyphen", TeamConfig{Roles: []RoleDef{{Name: "A", Count: 1, Assignee: "my-role", Prompt: "p", Filter: RoleFilter{Assignee: "my-role"}}}}, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

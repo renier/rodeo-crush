@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/renier/rodeo-crush/internal/config"
+	"github.com/renier/rodeo-crush/internal/shellutil"
 	"github.com/renier/rodeo-crush/internal/tmux"
 )
 
@@ -575,9 +576,9 @@ func TestShellEscape(t *testing.T) {
 		{"/path/to/file", "/path/to/file"},
 	}
 	for _, tt := range tests {
-		got := shellEscape(tt.in)
+		got := shellutil.ShellEscape(tt.in)
 		if got != tt.want {
-			t.Errorf("shellEscape(%q) = %q, want %q", tt.in, got, tt.want)
+			t.Errorf("ShellEscape(%q) = %q, want %q", tt.in, got, tt.want)
 		}
 	}
 }
