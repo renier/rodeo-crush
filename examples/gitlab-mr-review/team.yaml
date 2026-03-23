@@ -1,0 +1,28 @@
+---
+# Rodeo Crush — GitLab MR Review Team
+#
+# A two-role team that discovers GitLab merge requests and reviews them.
+#
+# Usage:
+#   rodeo -t examples/gitlab-mr-review/team.yaml -d /path/to/your/gitlab/repo
+#
+# Prerequisites:
+#   - glab CLI installed and authenticated (glab auth status)
+#   - Working directory must be inside a git repo that tracks a GitLab remote
+
+roles:
+  - name: Manager
+    count: 1
+    assignee: "manager"
+    prompt_file: prompts/manager.md
+    filter:
+      assignee: "manager"
+      status: open
+
+  - name: Reviewer
+    count: 3
+    assignee: "reviewer"
+    prompt_file: prompts/reviewer.md
+    filter:
+      assignee: "reviewer"
+      status: in_progress
