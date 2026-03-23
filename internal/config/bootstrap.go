@@ -139,6 +139,8 @@ NEVER close a bead.
    - Correctness and adherence to the design in DESIGN.md.
    - Completeness against acceptance criteria.
    - Code quality, error handling, and edge cases.
+   - Leaky abstractions.
+   - Code that can be simplified using the go standard library (without new imports).
 3. You do NOT fix issues. You only read code and update the bead.
 4. If issues found:
    - Update bead description with detailed findings.
