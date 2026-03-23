@@ -28,14 +28,15 @@ const (
 // unix socket. The TUI itself is started inside tmux; this interface is only
 // for the out-of-band prompt delivery.
 type CrushRunner interface {
-	SendPrompt(ctx context.Context, socketPath, prompt string) (string, error)
+	SendPrompt(ctx context.Context, socketPath, dataDir, prompt string) (string, error)
 }
 
 // ExecCrushRunner shells out to `crush run --socket`.
 type ExecCrushRunner struct{}
 
-func (r *ExecCrushRunner) SendPrompt(ctx context.Context, socketPath, prompt string) (string, error) {
+func (r *ExecCrushRunner) SendPrompt(ctx context.Context, socketPath, dataDir, prompt string) (string, error) {
 	cmd := exec.CommandContext(ctx, "crush", "run",
+		"-D", dataDir,
 		"-o", "stream-json",
 		"--socket", socketPath,
 		prompt,
@@ -74,6 +75,7 @@ type Orchestrator struct {
 	Logger             *slog.Logger
 	Session            *tmux.Session
 	CrushRunner        CrushRunner
+	dataDirs           []string
 }
 
 // New creates an Orchestrator with sensible defaults.
@@ -96,12 +98,14 @@ func New(cfg *config.TeamConfig, projectDir string) *Orchestrator {
 
 // agentHandle holds everything needed to (re)start an agent.
 type agentHandle struct {
-	agent       config.Agent
-	windowIdx   int
-	socketPath  string
-	crushCmd    string
-	promptFile  string
-	isArchitect bool
+	agent        config.Agent
+	windowIdx    int
+	socketPath   string
+	crushCmd     string
+	promptFile   string
+	isArchitect  bool
+	tuiDataDir   string
+	runDataDir   string
 }
 
 // Start launches tmux windows running Crush TUIs, starts a prompt loop
@@ -143,7 +147,20 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 			return fmt.Errorf("writing prompt for %s: %w", agent.Name, err)
 		}
 
-		crushCmd := fmt.Sprintf("crush --listen %s --cwd %s",
+		repoName := filepath.Base(o.ProjectDir)
+		roleName := fmt.Sprintf("%s-%d", agent.RoleDef.Assignee, agent.Index)
+		tuiDataDir := filepath.Join(os.TempDir(), "rodeo-tui-"+repoName+"-"+roleName)
+		runDataDir := filepath.Join(os.TempDir(), "rodeo-run-"+repoName+"-"+roleName)
+		if err := os.MkdirAll(tuiDataDir, 0755); err != nil {
+			return fmt.Errorf("creating TUI data dir for %s: %w", agent.Name, err)
+		}
+		if err := os.MkdirAll(runDataDir, 0755); err != nil {
+			return fmt.Errorf("creating run data dir for %s: %w", agent.Name, err)
+		}
+		o.dataDirs = append(o.dataDirs, tuiDataDir, runDataDir)
+
+		crushCmd := fmt.Sprintf("crush -D %s --listen %s --cwd %s",
+			shellEscape(tuiDataDir),
 			shellEscape(socketPath),
 			shellEscape(o.ProjectDir),
 		)
@@ -161,6 +178,8 @@ func (o *Orchestrator) Start(ctx context.Context) error {
 			crushCmd:    crushCmd,
 			promptFile:  promptFile,
 			isArchitect: isArchitect,
+			tuiDataDir:  tuiDataDir,
+			runDataDir:  runDataDir,
 		}
 	}
 
@@ -227,7 +246,7 @@ func (o *Orchestrator) promptLoop(ctx context.Context, h agentHandle) {
 		}
 
 		o.Logger.Info("sending prompt", "agent", h.agent.Name)
-		_, err := o.CrushRunner.SendPrompt(ctx, h.socketPath, "@"+h.promptFile)
+		_, err := o.CrushRunner.SendPrompt(ctx, h.socketPath, h.runDataDir, "@"+h.promptFile)
 		if ctx.Err() != nil {
 			return
 		}
@@ -259,6 +278,9 @@ func (o *Orchestrator) Stop() error {
 		return err
 	}
 	_ = os.RemoveAll(o.SocketDir)
+	for _, dir := range o.dataDirs {
+		_ = os.RemoveAll(dir)
+	}
 	return nil
 }
 

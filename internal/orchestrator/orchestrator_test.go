@@ -22,7 +22,7 @@ type mockCrushRunner struct {
 	sendErr error
 }
 
-func (m *mockCrushRunner) SendPrompt(_ context.Context, _, prompt string) (string, error) {
+func (m *mockCrushRunner) SendPrompt(_ context.Context, _, _, prompt string) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.calls++
@@ -79,7 +79,11 @@ func makeHandles(cfg *config.TeamConfig, socketDir string) []agentHandle {
 	handles := make([]agentHandle, len(agents))
 	for i, agent := range agents {
 		socketPath := agent.SocketPath(socketDir)
-		crushCmd := fmt.Sprintf("crush --listen %s --cwd /tmp", socketPath)
+		tuiDataDir := filepath.Join(socketDir, fmt.Sprintf("tui-data-%d", i))
+		runDataDir := filepath.Join(socketDir, fmt.Sprintf("run-data-%d", i))
+		os.MkdirAll(tuiDataDir, 0755)
+		os.MkdirAll(runDataDir, 0755)
+		crushCmd := fmt.Sprintf("crush -D %s --listen %s --cwd /tmp", tuiDataDir, socketPath)
 		promptFile := filepath.Join(socketDir, "prompt.md")
 		os.WriteFile(promptFile, []byte("test prompt"), 0644)
 		handles[i] = agentHandle{
@@ -88,6 +92,8 @@ func makeHandles(cfg *config.TeamConfig, socketDir string) []agentHandle {
 			socketPath: socketPath,
 			crushCmd:   crushCmd,
 			promptFile: promptFile,
+			tuiDataDir: tuiDataDir,
+			runDataDir: runDataDir,
 		}
 	}
 	return handles
